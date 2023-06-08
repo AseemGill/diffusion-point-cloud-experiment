@@ -119,6 +119,7 @@ class ShapeNetCore(Dataset):
                 else:
                     shift = torch.zeros([1, 3])
                     scale = torch.ones([1, 1])
+                    # print("None")
 
                 pc = (pc - shift) / scale
 

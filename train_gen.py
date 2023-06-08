@@ -38,7 +38,7 @@ parser.add_argument('--spectral_norm', type=eval, default=False, choices=[True, 
 # Datasets and loaders
 parser.add_argument('--dataset_path', type=str, default='./data/shapenet.hdf5')
 parser.add_argument('--categories', type=str_list, default=['airplane'])
-parser.add_argument('--scale_mode', type=str, default='shape_unit')
+parser.add_argument('--scale_mode', type=str, default=None)
 parser.add_argument('--train_batch_size', type=int, default=128)
 parser.add_argument('--val_batch_size', type=int, default=64)
 
@@ -100,7 +100,7 @@ train_iter = get_data_iterator(DataLoader(
 # Model
 logger.info('Building model...')
 if args.model == 'gaussian':
-    model = GaussianVAE(args).to(args.device)
+    model = GaussianVAE(args).to(args.device)    
 elif args.model == 'flow':
     model = FlowVAE(args).to(args.device)
 logger.info(repr(model))
@@ -135,7 +135,10 @@ def train(it):
     # Forward
     kl_weight = args.kl_weight
     loss = model.get_loss(x, kl_weight=kl_weight, writer=writer, it=it)
-
+    # loss = float(loss)
+    if torch.isnan(loss):
+        print(batch["id"])
+        input()
     # Backward and optimize
     loss.backward()
     orig_grad_norm = clip_grad_norm_(model.parameters(), args.max_grad_norm)
@@ -185,7 +188,7 @@ def test(it):
         jsd = jsd_between_point_cloud_sets(gen_pcs.cpu().numpy(), ref_pcs.cpu().numpy())
         results['jsd'] = jsd
 
-    # CD related metrics
+    # CD related metrics 
     writer.add_scalar('test/Coverage_CD', results['lgan_cov-CD'], global_step=it)
     writer.add_scalar('test/MMD_CD', results['lgan_mmd-CD'], global_step=it)
     writer.add_scalar('test/1NN_CD', results['1-NN-CD-acc'], global_step=it)
