@@ -120,8 +120,10 @@ class ShapeNetCore(Dataset):
                     shift = torch.zeros([1, 3])
                     scale = torch.ones([1, 1])
                     # print("None")
-
-                pc = (pc - shift) / scale
+                
+                pc_coord = pc[:,:3]
+                # print(pc_coord.shape)
+                pc[:,:3] = (pc_coord - shift) / scale # Apply shift and scale only to coordinates
 
                 self.pointclouds.append({
                     'pointcloud': pc,

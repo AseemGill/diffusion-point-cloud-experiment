@@ -60,6 +60,7 @@ parser.add_argument('--val_freq', type=int, default=1000)
 parser.add_argument('--test_freq', type=int, default=30*THOUSAND)
 parser.add_argument('--test_size', type=int, default=400)
 parser.add_argument('--tag', type=str, default=None)
+parser.add_argument('--point_dim', type=int, default=3) # Added this line to allow for flexible dim of points
 args = parser.parse_args()
 seed_all(args.seed)
 
@@ -135,10 +136,7 @@ def train(it):
     # Forward
     kl_weight = args.kl_weight
     loss = model.get_loss(x, kl_weight=kl_weight, writer=writer, it=it)
-    # loss = float(loss)
-    if torch.isnan(loss):
-        print(batch["id"])
-        input()
+
     # Backward and optimize
     loss.backward()
     orig_grad_norm = clip_grad_norm_(model.parameters(), args.max_grad_norm)
