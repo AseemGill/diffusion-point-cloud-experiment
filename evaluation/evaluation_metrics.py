@@ -288,7 +288,8 @@ def entropy_of_occupancy_grid(
     nn = NearestNeighbors(n_neighbors=1).fit(grid_coordinates)
 
     for pc in tqdm(pclouds, desc='JSD'):
-        _, indices = nn.kneighbors(pc)
+        # print(pc.shape)
+        _, indices = nn.kneighbors(pc[:,:3])
         indices = np.squeeze(indices)
         for i in indices:
             grid_counters[i] += 1
