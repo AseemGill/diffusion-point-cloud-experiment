@@ -50,7 +50,9 @@ class GaussianVAE(Module):
         Args:
             z:  Input latent, normal random samples with mean=0 std=1, (B, F)
         """
+        args = self.args
+        point_dim = args.point_dim
         if truncate_std is not None:
             z = truncated_normal_(z, mean=0, std=1, trunc_std=truncate_std)
-        samples = self.diffusion.sample(num_points, context=z, flexibility=flexibility)
+        samples = self.diffusion.sample(num_points, context=z, point_dim=point_dim, flexibility=flexibility)
         return samples
