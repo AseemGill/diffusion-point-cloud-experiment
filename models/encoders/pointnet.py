@@ -32,6 +32,7 @@ class PointNetEncoder(nn.Module):
 
     def forward(self, x):
         x = x.transpose(1, 2)
+        # print(x.dtype)
         x = F.relu(self.bn1(self.conv1(x)))
         x = F.relu(self.bn2(self.conv2(x)))
         x = F.relu(self.bn3(self.conv3(x)))

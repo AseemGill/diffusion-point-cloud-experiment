@@ -127,30 +127,32 @@ def train(it):
     batch = next(train_iter)
     x = batch['pointcloud'].to(args.device)
 
-    # Reset grad and model state
-    optimizer.zero_grad()
-    model.train()
-    if args.spectral_norm:
-        spectral_norm_power_iteration(model, n_power_iterations=1)
 
-    # Forward
-    kl_weight = args.kl_weight
-    loss = model.get_loss(x, kl_weight=kl_weight, writer=writer, it=it)
+    if x.shape[0] != 1:
+        # Reset grad and model state
+        optimizer.zero_grad()
+        model.train()
+        if args.spectral_norm:
+            spectral_norm_power_iteration(model, n_power_iterations=1)
 
-    # Backward and optimize
-    loss.backward()
-    orig_grad_norm = clip_grad_norm_(model.parameters(), args.max_grad_norm)
-    optimizer.step()
-    scheduler.step()
+        # Forward
+        kl_weight = args.kl_weight
+        loss = model.get_loss(x, kl_weight=kl_weight, writer=writer, it=it)
 
-    logger.info('[Train] Iter %04d | Loss %.6f | Grad %.4f | KLWeight %.4f' % (
-        it, loss.item(), orig_grad_norm, kl_weight
-    ))
-    writer.add_scalar('train/loss', loss, it)
-    writer.add_scalar('train/kl_weight', kl_weight, it)
-    writer.add_scalar('train/lr', optimizer.param_groups[0]['lr'], it)
-    writer.add_scalar('train/grad_norm', orig_grad_norm, it)
-    writer.flush()
+        # Backward and optimize
+        loss.backward()
+        orig_grad_norm = clip_grad_norm_(model.parameters(), args.max_grad_norm)
+        optimizer.step()
+        scheduler.step()
+
+        logger.info('[Train] Iter %04d | Loss %.6f | Grad %.4f | KLWeight %.4f' % (
+            it, loss.item(), orig_grad_norm, kl_weight
+        ))
+        writer.add_scalar('train/loss', loss, it)
+        writer.add_scalar('train/kl_weight', kl_weight, it)
+        writer.add_scalar('train/lr', optimizer.param_groups[0]['lr'], it)
+        writer.add_scalar('train/grad_norm', orig_grad_norm, it)
+        writer.flush()
 
 def validate_inspect(it):
     z = torch.randn([args.num_samples, args.latent_dim]).to(args.device)
@@ -181,10 +183,12 @@ def test(it):
     # gen_pcs *= val_dset.stats['std']
 
     with torch.no_grad():
-        results = compute_all_metrics(gen_pcs.to(args.device), ref_pcs.to(args.device), args.val_batch_size)
-        results = {k:v.item() for k, v in results.items()}
-        jsd = jsd_between_point_cloud_sets(gen_pcs.cpu().numpy(), ref_pcs.cpu().numpy())
-        results['jsd'] = jsd
+        if not np.isnan(gen_pcs.cpu().numpy()).any():
+            results = compute_all_metrics(gen_pcs.to(args.device), ref_pcs.to(args.device), args.val_batch_size)
+            results = {k:v.item() for k, v in results.items()}
+            jsd = jsd_between_point_cloud_sets(gen_pcs.cpu().numpy(), ref_pcs.cpu().numpy())
+            results['jsd'] = jsd
+            writer.add_scalar('test/JSD', results['jsd'], global_step=it)
 
     # CD related metrics 
     writer.add_scalar('test/Coverage_CD', results['lgan_cov-CD'], global_step=it)
@@ -195,7 +199,6 @@ def test(it):
     # writer.add_scalar('test/MMD_EMD', results['lgan_mmd-EMD'], global_step=it)
     # writer.add_scalar('test/1NN_EMD', results['1-NN-EMD-acc'], global_step=it)
     # JSD
-    writer.add_scalar('test/JSD', results['jsd'], global_step=it)
 
     # logger.info('[Test] Coverage  | CD %.6f | EMD %.6f' % (results['lgan_cov-CD'], results['lgan_cov-EMD']))
     # logger.info('[Test] MinMatDis | CD %.6f | EMD %.6f' % (results['lgan_mmd-CD'], results['lgan_mmd-EMD']))
